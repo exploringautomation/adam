@@ -1,0 +1,26 @@
+# Terraform state & backup files (Sensitive data)
+terraform.tfstate
+terraform.tfstate.backup
+*.tfstate*
+*.tfvars
+!terraform.tfvars.example  # Keep example config files
+
+# Terraform module cache
+.terraform/
+.terraform.lock.hcl
+
+# SSH keys (Ensure these aren't leaked)
+*.pem
+*.key
+
+# Logs & temporary files
+*.log
+*.bak
+*.bkp
+*.tmp
+
+# System & IDE-specific files
+.DS_Store
+.idea/
+.vscode/
+*.swp
