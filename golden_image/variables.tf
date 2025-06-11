@@ -19,8 +19,14 @@ variable "aws_profile" {
   default     = "bibek-profile"
 }
 
+#variable "ami_id" {
+#  type        = string
+#  description = "Amazon Linux 2023 AMI ID"
+#  default     = "ami-02a2af70a66af6dfb" # Latest Amazon Linux 2023 AMI for ap-south-1
+#}
+
 variable "ami_id" {
   type        = string
-  description = "Amazon Linux 2023 AMI ID"
-  default     = "ami-02a2af70a66af6dfb" # Latest Amazon Linux 2023 AMI for ap-south-1
+  description = "UBUNTU AMI ID"
+  default     = "ami-021a584b49225376d" # UBUNTU 22.04 AMI for ap-south-1
 }
