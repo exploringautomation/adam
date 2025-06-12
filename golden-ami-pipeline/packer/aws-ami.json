@@ -1,0 +1,44 @@
+{
+  "variables": {
+    "aws_access_key": "{{env `AWS_ACCESS_KEY_ID`}}",
+    "aws_secret_key": "{{env `AWS_SECRET_ACCESS_KEY`}}",
+    "region": "ap-south-1",
+    "baseimage": "ami-021a584b49225376d",
+    "efsid": "",
+    "ami_timestamp": "",
+    "subnet_id": ""
+  },
+  "builders": [
+  {
+    "type": "amazon-ebs",
+    "region": "{{user `region`}}",
+    "source_ami": "{{user `baseimage`}}",
+    "instance_type": "t2.micro",
+    "ssh_username": "ubuntu",
+    "ami_name": "jenkins-golden-ami-{{user `ami_timestamp`}}",
+    "access_key": "{{user `aws_access_key`}}",
+    "secret_key": "{{user `aws_secret_key`}}",
+    "subnet_id": "{{user `subnet_id`}}",
+    "associate_public_ip_address": false
+  }
+ ],
+  "provisioners": [
+    {
+      "type": "file",
+      "source": "../jenkinsrole.tar",
+      "destination": "/home/ubuntu/"
+    },
+    {
+      "type": "file",
+      "source": "../setup.sh",
+      "destination": "/home/ubuntu/"
+    },
+    {
+      "type": "shell",
+      "inline": [
+        "chmod +x /home/ubuntu/setup.sh",
+        "/home/ubuntu/setup.sh {{user `efsid`}} {{user `region`}}"
+      ]
+    }
+  ]
+}

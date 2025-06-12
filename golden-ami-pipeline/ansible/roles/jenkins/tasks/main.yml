@@ -1,0 +1,133 @@
+---
+- name: Ensure Java & fontconfig are installed
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - openjdk-17-jdk # Hardcoded Java package name
+    - fontconfig
+    - nfs-common
+
+- name: Ensure Jenkins home directory mount point exists
+  ansible.builtin.file:
+    path: /var/lib/jenkins
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Mount EFS to /var/lib/jenkins
+  ansible.builtin.mount:
+    path: /var/lib/jenkins
+    src: "fs-0a1a6dad383514154.efs.ap-south-1.amazonaws.com:/" # HARDCODED EFS ID and REGION
+    fstype: nfs4
+    opts: "_netdev,hard,intr,rsize=8192,wsize=8192,noatime,nfsvers=4.1"
+    state: mounted
+
+- name: Wait for EFS mount to be ready (ensure path exists and is a directory)
+  ansible.builtin.wait_for:
+    path: /var/lib/jenkins
+    timeout: 60
+
+- name: Ensure the Jenkins apt repository key is installed and de-armored
+  ansible.builtin.shell: |
+    curl -fsSL https://pkg.jenkins.io/debian/jenkins.io-2023.key | gpg --dearmor -o /usr/share/keyrings/jenkins-keyring.gpg
+  args:
+    creates: /usr/share/keyrings/jenkins-keyring.gpg
+
+- name: Ensure the Jenkins apt repository is configured
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/" # Hardcoded Jenkins repo URL (debian-stable)
+    state: present
+    filename: jenkins
+    update_cache: yes
+
+- name: Update apt package cache
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Ensure Jenkins is installed
+  ansible.builtin.apt:
+    name: jenkins
+    state: latest
+    update_cache: yes
+
+- name: Ensure jenkins user exists with correct home directory
+  ansible.builtin.user:
+    name: jenkins
+    home: /var/lib/jenkins
+    shell: /bin/bash
+    state: present
+    create_home: no
+
+- name: Change permission to Jenkins user and group on EFS mount
+  ansible.builtin.file:
+    path: /var/lib/jenkins
+    owner: jenkins
+    group: jenkins
+    state: directory
+    recurse: yes
+    mode: "0755"
+
+# --- START OF CRITICAL LOG CAPTURE BLOCK ---
+# This block attempts to start Jenkins and captures detailed logs if it fails.
+- name: Attempt to Enable and Start Jenkins service (and capture logs on failure)
+  block:
+    - name: Enable and start Jenkins service
+      ansible.builtin.service:
+        name: jenkins
+        enabled: true
+        state: started
+  rescue:
+    - name: Capture Jenkins service status on failure
+      ansible.builtin.command: systemctl status jenkins.service
+      register: jenkins_status_output
+      failed_when: false # Do not fail the rescue block if this command fails
+      changed_when: false
+      ignore_errors: true # Added for robustness in rescue
+
+    - name: Display Jenkins service status (stdout)
+      ansible.builtin.debug:
+        var: jenkins_status_output.stdout_lines
+      when: jenkins_status_output is defined and jenkins_status_output.stdout_lines is defined
+
+    - name: Display Jenkins service status (stderr)
+      ansible.builtin.debug:
+        var: jenkins_status_output.stderr_lines
+      when: jenkins_status_output is defined and jenkins_status_output.stderr_lines is defined
+
+    - name: Capture detailed Jenkins journal logs on failure
+      ansible.builtin.command: journalctl -xeu jenkins.service --no-pager
+      register: jenkins_journal_output
+      failed_when: false # Do not fail the rescue block if this command fails
+      changed_when: false
+      ignore_errors: true # Added for robustness in rescue
+
+    - name: Display detailed Jenkins journal logs (stdout)
+      ansible.builtin.debug:
+        var: jenkins_journal_output.stdout_lines
+      when: jenkins_journal_output is defined and jenkins_journal_output.stdout_lines is defined
+
+    - name: Display detailed Jenkins journal logs (stderr)
+      ansible.builtin.debug:
+        var: jenkins_journal_output.stderr_lines
+      when: jenkins_journal_output is defined and jenkins_journal_output.stderr_lines is defined
+
+    - name: Fail the playbook after capturing logs
+      ansible.builtin.fail:
+        msg: "Jenkins service failed to start. Review captured logs above."
+# --- END OF CRITICAL LOG CAPTURE BLOCK ---
+
+- name: Check if port 8080 is listening
+  ansible.builtin.wait_for:
+    port: 8080
+    timeout: 180
+    msg: "Timeout waiting for 8080 to respond"
+  register: port_check
+  ignore_errors: yes
+
+- name: Print message if Jenkins is not running
+  ansible.builtin.debug:
+    msg: "*== Jenkins NOT Running or port 8080 not listening ==*"
+  when: port_check.failed == true
