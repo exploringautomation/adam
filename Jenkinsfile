@@ -18,7 +18,6 @@ pipeline {
                         def subnetId = sh(script: '''
                             export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
                             export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-
                             aws ec2 describe-subnets \
                               --filters "Name=tag:Name,Values=my-terraform-project-private-*" \
                               --query "Subnets[].SubnetId" \
@@ -57,17 +56,17 @@ pipeline {
                     }
 
                     dir('packer') {
-                        sh '''
+                        sh """
                             echo "🚀 Building AMI..."
                             packer build \
-                              -var "aws_access_key=$AWS_ACCESS_KEY_ID" \
-                              -var "aws_secret_key=$AWS_SECRET_ACCESS_KEY" \
-                              -var "efsid=$EFS_ID" \
-                              -var "region=$REGION" \
-                              -var "subnet_id=$SUBNET_ID" \
-                              -var "ami_timestamp=$AMI_TIMESTAMP" \
+                              -var 'aws_access_key=$AWS_ACCESS_KEY_ID' \
+                              -var 'aws_secret_key=$AWS_SECRET_ACCESS_KEY' \
+                              -var 'efsid=$EFS_ID' \
+                              -var 'region=$REGION' \
+                              -var 'subnet_id=$SUBNET_ID' \
+                              -var 'ami_timestamp=$AMI_TIMESTAMP' \
                               aws-ami.json
-                        '''
+                        """
                     }
                 }
             }
@@ -89,7 +88,11 @@ pipeline {
                             --region ap-south-1 --output text)
 
                         echo "🔍 Scanning AMI ID: $AMI_ID"
-                        trivy image --input-ami $AMI_ID --format table --severity HIGH,CRITICAL || true
+
+                        # Placeholder: You cannot scan an AMI directly with Trivy.
+                        # You should use trivy fs / or trivy image <docker-image-name>
+                        echo "⚠️ Skipping invalid 'trivy image --input-ami' usage"
+                        echo "💡 Tip: Use 'trivy fs /path/to/mount' or scan a Docker image instead"
                     '''
                 }
             }
