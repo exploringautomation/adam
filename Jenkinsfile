@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         REGION = 'ap-south-1'
-        EFS_ID = 'fs-0a3017c2f0b966a8b'
+        EFS_ID = 'fs-0072693cddf333deb'
     }
 
     stages {

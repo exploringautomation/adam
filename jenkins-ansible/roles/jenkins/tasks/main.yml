@@ -19,7 +19,7 @@
 - name: Mount EFS to /var/lib/jenkins
   ansible.builtin.mount:
     path: /var/lib/jenkins
-    src: "fs-0a3017c2f0b966a8b.efs.ap-south-1.amazonaws.com:/" # HARDCODED EFS ID and REGION
+    src: "{{ efs_id }}.efs.{{ region }}.amazonaws.com:/" # HARDCODED EFS ID and REGION
     fstype: nfs4
     opts: "_netdev,hard,intr,rsize=8192,wsize=8192,noatime,nfsvers=4.1"
     state: mounted
